@@ -165,10 +165,15 @@ def gitclone(cwd, repo, tag, subdir):
             'git', 'clone', '--recursive', '--single-branch', '--depth=1', '-b',
             tag, '{}/{}.git'.format(FLAGS.github_organization, repo), subdir
         ],
-                             cwd=cwd)
+                             cwd=cwd,
+                             stderr=subprocess.PIPE, universal_newlines=True)
         p.wait()
-        fail_if(p.returncode != 0,
-                'git clone of repo "{}" at tag "{}" failed'.format(repo, tag))
+        if p.returncode != 0 and p.stderr.read().find("already exists and is not an empty directory") >= 0:
+            p = subprocess.Popen(['git', 'checkout', tag],
+                             cwd=os.path.join(cwd, subdir), stderr=subprocess.PIPE, universal_newlines=True)
+
+        fail_if(p.returncode != 0 and p.stderr.read().find("Already on") == -1,
+                'git clone of repo "{}" at tag "{}" failed with error: "{}"'.format(repo, tag, p.stderr.read()))
 
 
 def prebuild_command():
